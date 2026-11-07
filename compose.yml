@@ -1,0 +1,69 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: infrastructure/frankenphp/Dockerfile
+      target: dev
+    restart: unless-stopped
+    depends_on:
+      - database
+      - redis
+    volumes:
+      - ./apps/backend:/var/www/app
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - redis_access
+      - database_access
+      - public
+
+  nuxt:
+    build:
+      context: .
+      dockerfile: infrastructure/nuxt/Dockerfile
+      target: dev
+    restart: unless-stopped
+    depends_on:
+      - app
+    volumes:
+      - ./apps/frontend:/app
+    networks:
+      redis_access:
+      public:
+        ipv4_address: 172.30.0.3
+
+  database:
+    image: percona/percona-server:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: app
+      MYSQL_USER: app
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - database_data:/var/lib/mysql
+    networks:
+      - database_access
+  
+  redis:
+    image: redis:8.10.2-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - redis_access
+
+volumes:
+  database_data:
+  redis_data:
+
+networks:
+  database_access:
+    internal: true
+  redis_access:
+    internal: true
+  public:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24

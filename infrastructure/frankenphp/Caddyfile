@@ -1,0 +1,23 @@
+{
+    auto_https off
+}
+
+:443 {
+    redir http://localhost{uri} permanent
+}
+
+:80 {
+    @nuxt_api {
+        remote_ip 172.30.0.3
+        path /api/*
+    }
+
+    handle @nuxt_api {
+        root * /var/www/app/public
+        php_server
+    }
+
+    handle {
+        reverse_proxy nuxt:3000
+    }
+}
